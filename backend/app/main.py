@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import profile, jobs, skills
+from app.api.routes import profile, jobs, skills, network
 
 app = FastAPI(
     title="PathForge API",
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(profile.router)
 app.include_router(jobs.router)
 app.include_router(skills.router)
+app.include_router(network.router)
 
 
 @app.get("/")

@@ -336,12 +336,18 @@ export default function DashboardPage() {
         <p className="text-gray-500 text-sm">
           This is your starting point. What you do with it determines the outcome.
         </p>
-        <div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/skills"
             className="inline-block bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3 rounded-lg text-sm transition-colors"
           >
-            View Your Learning Roadmap →
+            Learning Roadmap →
+          </Link>
+          <Link
+            href="/network"
+            className="inline-block bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold px-6 py-3 rounded-lg text-sm transition-colors"
+          >
+            Warm Introductions →
           </Link>
         </div>
         <div>

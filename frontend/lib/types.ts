@@ -140,3 +140,30 @@ export interface SkillProgress {
   completed_steps: number[];
   notes?: string;
 }
+
+// Warm introduction engine
+export interface Connection {
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  linkedin_url?: string | null;
+  email?: string | null;
+  company: string;
+  position: string;
+  connected_on?: string | null;
+}
+
+export interface OutreachMessage {
+  connection: Connection;
+  relevance_score: number;
+  company_is_hiring: boolean;
+  why_relevant: string;
+  subject: string;
+  message: string;
+}
+
+export interface NetworkAnalysisResponse {
+  total_connections: number;
+  matched_connections: number;
+  outreach_messages: OutreachMessage[];
+}
