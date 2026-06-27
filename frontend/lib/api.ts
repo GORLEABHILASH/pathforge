@@ -1,4 +1,4 @@
-import { OnboardingData, ProfileResponse } from "./types";
+import { OnboardingData, ProfileResponse, ExtractedProfile, JobMatchResponse } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -24,6 +24,22 @@ export async function assessProfile(data: OnboardingData): Promise<ProfileRespon
     throw new Error(err.detail || "Assessment failed");
   }
 
+  return res.json();
+}
+
+export async function matchJobs(
+  profile: ExtractedProfile,
+  onboarding: OnboardingData
+): Promise<JobMatchResponse> {
+  const res = await fetch(`${API_BASE}/api/jobs/match`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile, onboarding }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Job matching failed");
+  }
   return res.json();
 }
 

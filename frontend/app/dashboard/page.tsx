@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ProfileResponse } from "@/lib/types";
+import { ProfileResponse, MatchedJob, JobMatchResponse, VisaConfidence } from "@/lib/types";
+import { matchJobs } from "@/lib/api";
 
 function ScoreRing({ score }: { score: number }) {
   const color =
@@ -26,6 +27,64 @@ function ScoreRing({ score }: { score: number }) {
       <span className="text-sm font-medium" style={{ color }}>
         {label}
       </span>
+    </div>
+  );
+}
+
+const VISA_BADGE: Record<VisaConfidence, { label: string; cls: string }> = {
+  confirmed: { label: "Sponsors Visas", cls: "text-green-400 bg-green-500/10 border-green-500/30" },
+  likely: { label: "Likely Sponsors", cls: "text-blue-400 bg-blue-500/10 border-blue-500/30" },
+  unknown: { label: "Unknown", cls: "text-gray-400 bg-white/5 border-white/10" },
+  not_required: { label: "Open to All", cls: "text-gray-500 bg-white/5 border-white/10" },
+};
+
+function JobCard({ job }: { job: MatchedJob }) {
+  const scoreColor =
+    job.match_score >= 75 ? "#3b82f6" : job.match_score >= 50 ? "#f59e0b" : "#6b7280";
+  const badge = VISA_BADGE[job.visa_confidence];
+  const fallbackLink = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
+    `${job.title} ${job.company}`
+  )}`;
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm">{job.title}</div>
+          <div className="text-gray-400 text-xs mt-0.5">
+            {job.company} · {job.location}
+            {job.is_remote && " · Remote"}
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <div className="text-2xl font-bold" style={{ color: scoreColor }}>
+            {job.match_score}
+          </div>
+          <div className="text-gray-600 text-xs">match</div>
+        </div>
+      </div>
+
+      {job.why_match && (
+        <p className="text-gray-400 text-xs leading-relaxed italic">
+          &ldquo;{job.why_match}&rdquo;
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className={`text-xs px-2 py-0.5 rounded-full border ${badge.cls}`}>
+          {badge.label}
+        </span>
+        <a
+          href={job.apply_link || fallbackLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-400 hover:text-blue-300 underline flex-shrink-0"
+        >
+          Apply →
+        </a>
+      </div>
+
+      <p className="text-gray-600 text-xs">{job.visa_signal}</p>
     </div>
   );
 }
@@ -54,6 +113,9 @@ function Bar({ label, value, max }: { label: string; value: number; max: number 
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<ProfileResponse | null>(null);
+  const [jobs, setJobs] = useState<JobMatchResponse | null>(null);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState("");
 
   useEffect(() => {
     const stored = sessionStorage.getItem("pathforge_profile");
@@ -63,6 +125,23 @@ export default function DashboardPage() {
     }
     setData(JSON.parse(stored));
   }, [router]);
+
+  useEffect(() => {
+    if (!data) return;
+    const cached = sessionStorage.getItem("pathforge_jobs");
+    if (cached) {
+      setJobs(JSON.parse(cached));
+      return;
+    }
+    setJobsLoading(true);
+    matchJobs(data.profile, data.onboarding)
+      .then((result) => {
+        sessionStorage.setItem("pathforge_jobs", JSON.stringify(result));
+        setJobs(result);
+      })
+      .catch((e: Error) => setJobsError(e.message))
+      .finally(() => setJobsLoading(false));
+  }, [data]);
 
   if (!data) return null;
 
@@ -135,6 +214,55 @@ export default function DashboardPage() {
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* Matched Jobs */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            Matched Jobs
+          </h2>
+          {jobs && (
+            <span className="text-xs text-gray-600">
+              {jobs.total_fetched} found · {jobs.total_after_visa_filter} after visa filter
+              {jobs.used_stub && " · sample data"}
+            </span>
+          )}
+        </div>
+
+        {jobsLoading && (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+            <p className="text-gray-500 text-sm">Finding matching jobs...</p>
+            <p className="text-gray-600 text-xs mt-1">
+              Scanning openings and scoring against your profile
+            </p>
+          </div>
+        )}
+
+        {jobsError && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+            <p className="text-red-400 text-sm">Job matching failed: {jobsError}</p>
+          </div>
+        )}
+
+        {jobs && jobs.jobs.length > 0 && (
+          <div className="space-y-3">
+            {jobs.jobs.map((job) => (
+              <JobCard key={job.job_id} job={job} />
+            ))}
+          </div>
+        )}
+
+        {jobs && jobs.jobs.length === 0 && (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+            <p className="text-gray-500 text-sm">
+              No visa-sponsoring jobs found matching your profile right now.
+            </p>
+            <p className="text-gray-600 text-xs mt-1">
+              Broaden your target or add more skills to improve match rate.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Skills */}

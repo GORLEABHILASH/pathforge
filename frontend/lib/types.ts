@@ -74,3 +74,26 @@ export interface ProfileResponse {
   onboarding: OnboardingData;
   email: string;
 }
+
+export type VisaConfidence = "confirmed" | "likely" | "unknown" | "not_required";
+
+export interface MatchedJob {
+  job_id: string;
+  title: string;
+  company: string;
+  location: string;
+  apply_link: string | null;
+  is_remote: boolean;
+  match_score: number;
+  visa_confidence: VisaConfidence;
+  visa_signal: string;
+  why_match: string;
+  employment_type: string | null;
+}
+
+export interface JobMatchResponse {
+  jobs: MatchedJob[];
+  total_fetched: number;
+  total_after_visa_filter: number;
+  used_stub: boolean;
+}
