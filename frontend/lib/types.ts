@@ -97,3 +97,46 @@ export interface JobMatchResponse {
   total_after_visa_filter: number;
   used_stub: boolean;
 }
+
+// Skill demand + roadmap types
+export interface SkillDemand {
+  skill: string;
+  demand_score: number;
+  trend: "exploding" | "growing" | "stable" | "declining";
+  trend_pct: number;
+  job_count_estimate: number;
+  hire_probability_boost: number;
+}
+
+export interface LearningStep {
+  order: number;
+  what: string;
+  how: string;
+  time_estimate: string;
+  deliverable: string;
+}
+
+export interface SkillRoadmapItem {
+  skill: string;
+  priority: number;
+  current_level: "none" | "beginner" | "intermediate";
+  target_level: "working" | "proficient" | "expert";
+  why_it_matters: string;
+  hire_probability_boost: number;
+  steps: LearningStep[];
+}
+
+export interface SkillRoadmapResponse {
+  top_market_skills: SkillDemand[];
+  your_gaps: SkillRoadmapItem[];
+  total_weeks_to_ready: number;
+  current_hire_probability: number;
+  projected_hire_probability: number;
+}
+
+// Progress tracking (persisted in Supabase, cached in localStorage)
+export interface SkillProgress {
+  skill: string;
+  completed_steps: number[];
+  notes?: string;
+}

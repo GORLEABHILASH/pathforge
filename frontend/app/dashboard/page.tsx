@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ProfileResponse, MatchedJob, JobMatchResponse, VisaConfidence } from "@/lib/types";
 import { matchJobs } from "@/lib/api";
 
@@ -331,16 +332,26 @@ export default function DashboardPage() {
       )}
 
       {/* CTA */}
-      <div className="text-center pt-4 pb-8">
-        <p className="text-gray-500 text-sm mb-4">
+      <div className="text-center pt-4 pb-8 space-y-3">
+        <p className="text-gray-500 text-sm">
           This is your starting point. What you do with it determines the outcome.
         </p>
-        <button
-          onClick={() => router.push("/onboarding")}
-          className="text-blue-400 text-sm hover:text-blue-300 underline"
-        >
-          Re-run assessment with updated resume
-        </button>
+        <div>
+          <Link
+            href="/skills"
+            className="inline-block bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3 rounded-lg text-sm transition-colors"
+          >
+            View Your Learning Roadmap →
+          </Link>
+        </div>
+        <div>
+          <button
+            onClick={() => router.push("/onboarding")}
+            className="text-gray-600 text-sm hover:text-gray-400 underline"
+          >
+            Re-run assessment with updated resume
+          </button>
+        </div>
       </div>
     </div>
   );
