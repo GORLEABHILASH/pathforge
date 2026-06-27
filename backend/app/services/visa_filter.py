@@ -3,9 +3,9 @@ from app.models.jobs import RawJob
 
 SPONSOR_KEYWORDS = [
     "h-1b", "h1b", "visa sponsor", "visa sponsorship", "will sponsor",
-    "immigration support", "work authorization", "work authoriz",
-    "authorized to work", "ead", "stem opt", "opt authorization",
+    "immigration support", "stem opt", "opt authorization",
     "sponsorship available", "sponsor work", "support visa",
+    "work visa", "petition", "lca filing",
 ]
 
 NEEDS_SPONSORSHIP = {"F-1 Student", "OPT", "STEM OPT"}

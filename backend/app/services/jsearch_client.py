@@ -1,6 +1,31 @@
 import os
+import re
 import httpx
 from app.models.jobs import RawJob
+
+_HTML_TAG = re.compile(r"<[^>]+>")
+_WHITESPACE = re.compile(r"\s+")
+
+
+def _strip_html(text: str) -> str:
+    return _WHITESPACE.sub(" ", _HTML_TAG.sub(" ", text)).strip()
+
+
+def _map_jobicy(j: dict, index: int) -> RawJob:
+    geo = j.get("jobGeo", "Remote")
+    description = _strip_html(j.get("jobDescription", j.get("jobExcerpt", "")))
+    return RawJob(
+        job_id=f"jobicy-{j.get('id', index)}",
+        job_title=j.get("jobTitle", ""),
+        employer_name=j.get("companyName", ""),
+        job_city=None,
+        job_state=geo if geo not in ("USA", "Worldwide", "LATAM", "Europe") else None,
+        job_country="US",
+        job_description=description,
+        job_apply_link=j.get("url"),
+        job_employment_type=(j.get("jobType") or ["FULLTIME"])[0].upper().replace("-", ""),
+        job_is_remote=True,
+    )
 
 STUB_JOBS: list[RawJob] = [
     RawJob(
@@ -156,41 +181,46 @@ STUB_JOBS: list[RawJob] = [
 ]
 
 
-def _map_to_raw(j: dict) -> RawJob:
-    return RawJob(
-        job_id=j.get("job_id", ""),
-        job_title=j.get("job_title", ""),
-        employer_name=j.get("employer_name", ""),
-        job_city=j.get("job_city"),
-        job_state=j.get("job_state"),
-        job_country=j.get("job_country"),
-        job_description=j.get("job_description", ""),
-        job_apply_link=j.get("job_apply_link"),
-        job_employment_type=j.get("job_employment_type"),
-        job_is_remote=j.get("job_is_remote", False),
-    )
+def _extract_tags(query: str) -> str:
+    """Pull the first recognizable tech skill from the query for Jobicy tag filter."""
+    skills = [
+        "python", "javascript", "typescript", "java", "go", "rust", "c++",
+        "react", "node", "fastapi", "django", "machine-learning", "data",
+        "devops", "kubernetes", "aws", "backend", "frontend", "fullstack",
+    ]
+    lower = query.lower()
+    for skill in skills:
+        if skill in lower:
+            return skill
+    return "software"
 
 
 async def fetch_jobs(query: str, location: str = "United States") -> tuple[list[RawJob], bool]:
-    """Returns (jobs, used_stub). Falls back to stub data if no API key or request fails."""
-    api_key = os.environ.get("JSEARCH_API_KEY", "")
-    if not api_key:
-        return STUB_JOBS, True
-
+    """Returns (jobs, used_stub).
+    Primary: Jobicy API (free, no auth, real remote jobs).
+    Fallback: stub data.
+    """
     try:
+        tag = _extract_tags(query)
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                "https://jsearch.p.rapidapi.com/search",
-                headers={
-                    "X-RapidAPI-Key": api_key,
-                    "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-                },
-                params={"query": query, "page": "1", "num_pages": "2", "country": "us"},
+                "https://jobicy.com/api/v2/remote-jobs",
+                params={"tag": tag, "count": "20"},
+                headers={"Accept": "application/json"},
             )
             resp.raise_for_status()
-            data = resp.json().get("data", [])
-            if not data:
+            payload = resp.json()
+            jobs_data = payload.get("jobs", [])
+            if not jobs_data:
                 return STUB_JOBS, True
-            return [_map_to_raw(j) for j in data[:20]], False
+            # Deduplicate by title+company
+            seen: set[str] = set()
+            unique: list[RawJob] = []
+            for i, j in enumerate(jobs_data):
+                key = f"{j.get('jobTitle','').lower()}|{j.get('companyName','').lower()}"
+                if key not in seen:
+                    seen.add(key)
+                    unique.append(_map_jobicy(j, i))
+            return unique[:20], False
     except Exception:
         return STUB_JOBS, True
